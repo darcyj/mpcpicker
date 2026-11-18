@@ -1,0 +1,449 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>MPC Card Picks</title>
+<style>
+:root{--bg:#f6f5f2;--panel:#fff;--ink:#1d1d1b;--muted:#6b6a66;--line:#e2e0da;--ok:#2f7d4f;--warn:#a5671a;--bad:#b3261e;--accent:#2b5fb3;--chip:#efede8}
+@media (prefers-color-scheme:dark){:root{--bg:#151514;--panel:#1f1f1d;--ink:#ecebe6;--muted:#9c9a93;--line:#33322f;--ok:#6cc08f;--warn:#e0a85a;--bad:#f2867e;--accent:#8fb3f0;--chip:#2a2a27}}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif}
+button,select,input{font:inherit;color:var(--ink)}
+button,select{padding:7px 12px;border:1px solid var(--line);border-radius:8px;background:var(--panel);cursor:pointer}
+input{padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--panel)}
+button:disabled{opacity:.4;cursor:default}
+button.primary{background:var(--ok);border-color:var(--ok);color:var(--panel);font-weight:600}
+button.danger{color:var(--bad)}
+button.link{border:0;background:none;padding:4px 6px;color:var(--accent);text-decoration:underline}
+button.icon{padding:6px 11px;font-size:18px;line-height:1}
+.hidden{display:none!important}
+.muted{color:var(--muted)}
+.err{background:var(--bad);color:#fff;padding:9px 14px}
+/* join */
+.gate{max-width:380px;margin:12vh auto 0;padding:24px;background:var(--panel);border:1px solid var(--line);border-radius:14px}
+.gate h1{margin:0 0 4px;font-size:22px}
+.gate label{display:block;margin:16px 0 6px;font-weight:600}
+.gate input,.gate select{width:100%}
+.gate button{width:100%;margin-top:20px}
+.msg{margin-top:12px;color:var(--bad);min-height:1.4em}
+/* app shell: fills the screen, no page scroll on desktop */
+#app{display:flex;flex-direction:column;height:100vh;height:100dvh}
+.top{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--line);flex:0 0 auto}
+.top .who{font-weight:600;white-space:nowrap}
+.top .nav{display:flex;align-items:center;gap:4px;flex:1 1 auto;justify-content:center;min-width:0}
+.top .nav select{max-width:260px;min-width:0;flex:0 1 auto;text-overflow:ellipsis}
+.savestate{font-size:12px;color:var(--muted);white-space:nowrap}
+.savestate.dirty{color:var(--warn);font-weight:600}
+.menu{position:relative}
+.menu-list{position:absolute;right:0;top:calc(100% + 4px);background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:6px;z-index:10;display:flex;flex-direction:column;min-width:190px;box-shadow:0 6px 24px rgba(0,0,0,.15)}
+.menu-list button{border:0;text-align:left;background:none;padding:9px 10px;border-radius:6px}
+.menu-list button:hover{background:var(--chip)}
+main{flex:1 1 auto;min-height:0;display:grid;grid-template-columns:auto minmax(0,1fr);gap:18px;padding:14px 16px;max-width:1400px;width:100%;margin:0 auto}
+/* left: the card */
+.stage{display:flex;flex-direction:column;align-items:center;min-height:0;gap:8px;touch-action:pan-y;user-select:none;-webkit-user-select:none}
+.cardwrap{position:relative;display:flex;align-items:center}
+.big{height:calc(100dvh - 110px);max-height:760px;max-width:42vw;aspect-ratio:63/88;width:auto;object-fit:contain;background:var(--line);border-radius:12px;display:block;transition:transform .18s ease,opacity .18s}
+.navbtn{position:absolute;top:50%;transform:translateY(-50%);width:44px;height:64px;border-radius:10px;border:0;background:rgba(0,0,0,.45);color:#fff;font-size:28px;line-height:1;padding:0;opacity:.75}
+.navbtn:hover{opacity:1}
+.navbtn:disabled{opacity:.15}
+.navbtn.l{left:6px}.navbtn.r{right:6px}
+.big.ph{display:flex;align-items:center;justify-content:center;text-align:center;padding:16px;color:var(--muted)}
+.cap{font-size:12px;color:var(--muted);text-align:center;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:0 0 auto}
+/* right: details */
+.side{display:flex;flex-direction:column;min-height:0;gap:10px}
+.head{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px}
+.head h2{margin:0;font-size:21px;line-height:1.2}
+.st{font-size:11px;font-weight:600;padding:2px 8px;border-radius:99px;border:1px solid currentColor;white-space:nowrap}
+.st.ok{color:var(--ok)}.st.check{color:var(--warn)}.st.none{color:var(--bad)}
+.pbar{display:flex;align-items:center;gap:6px}
+.pbar select{flex:1 1 auto;min-width:0;text-overflow:ellipsis}
+.pcount{font-size:12px;color:var(--muted);white-space:nowrap}
+.ctrls{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.ctrls label{font-size:13px;color:var(--muted)}
+.ctrls input{width:64px}
+.warnbox{border:1px solid var(--warn);color:var(--warn);border-radius:8px;padding:6px 10px;font-size:13px}
+.artlabel{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-top:2px}
+.opts{flex:1 1 auto;min-height:0;overflow:auto;display:flex;flex-wrap:wrap;align-content:flex-start;gap:6px;padding:2px}
+.opt{width:86px;padding:0;border:2px solid transparent;border-radius:7px;background:none;position:relative;flex:0 0 auto}
+.opt img{width:100%;aspect-ratio:63/88;object-fit:cover;border-radius:5px;display:block;background:var(--line)}
+.opt.on{border-color:var(--accent)}
+.opt .tag{position:absolute;left:3px;right:3px;bottom:3px;font-size:9px;font-weight:700;background:var(--warn);color:#fff;border-radius:3px;text-align:center}
+.divider{flex-basis:100%;font-size:11px;color:var(--muted);border-top:1px dashed var(--line);padding-top:4px;margin-top:2px}
+.actions{display:flex;gap:8px;align-items:center;flex:0 0 auto}
+.grow{flex:1 1 auto}
+.actions .primary{padding:9px 18px}
+.empty{grid-column:1/-1;text-align:center;padding:40px 16px}
+/* add card */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:20;display:flex;align-items:flex-start;justify-content:center;padding:12vh 16px 16px}
+.dialog{background:var(--panel);border-radius:14px;padding:18px;width:100%;max-width:460px}
+.dialog h3{margin:0 0 10px}
+.sugg{list-style:none;margin:6px 0 0;padding:0;border:1px solid var(--line);border-radius:8px;max-height:260px;overflow:auto}
+.sugg li{padding:9px 11px;cursor:pointer}
+.sugg li:hover,.sugg li.on{background:var(--chip)}
+.toast{position:fixed;bottom:calc(18px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:9px 15px;border-radius:9px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:30;max-width:90vw;text-align:center}
+.toast.on{opacity:.94}
+.keys{font-size:11px;color:var(--muted)}
+kbd{font:10px ui-monospace,monospace;border:1px solid var(--line);border-radius:3px;padding:0 4px}
+
+/* phones: stack, art becomes one swipeable row under the card */
+@media (max-width:760px){
+  #app{height:auto;min-height:100dvh}
+  .top{position:sticky;top:0;background:var(--bg);z-index:5;padding:6px 8px;gap:4px}
+  .top .who,.keys{display:none}
+  .top .nav select{max-width:none;flex:1 1 auto}
+  main{display:flex;flex-direction:column;gap:10px;padding:10px 12px calc(12px + env(safe-area-inset-bottom))}
+  .stage{order:1}
+  .cardwrap{height:auto}
+  .big{height:min(52dvh,118vw);max-height:none;max-width:100%}
+  .side{display:contents}
+  .head{order:0}
+  .pbar{order:2}
+  .warnbox{order:3}
+  .artlabel{order:4}
+  .opts{order:5;flex:0 0 auto;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;padding-bottom:6px;-webkit-overflow-scrolling:touch}
+  .opt{width:64px}
+  .divider{flex-basis:auto;border-top:0;border-left:1px dashed var(--line);padding:0 6px;margin:0;writing-mode:vertical-rl;transform:rotate(180deg);font-size:10px;max-height:90px;overflow:hidden}
+  .ctrls{order:6}
+  .actions{order:7;position:sticky;bottom:0;background:var(--bg);padding:8px 0 calc(4px + env(safe-area-inset-bottom))}
+  .actions .primary{flex:1 1 auto}
+  .actions .grow{display:none}
+  .actions button{padding:9px 10px}
+}
+</style>
+</head>
+<body>
+<div id="err" class="err hidden"></div>
+
+<div id="gate" class="gate hidden">
+  <h1>MPC card picks</h1>
+  <div class="muted">Pick the printing and art for each of your cards.</div>
+  <form id="gateForm">
+    <label for="code">Join code</label>
+    <input id="code" autocomplete="off" autocapitalize="off" required>
+    <label for="who">Your name</label>
+    <select id="who" required><option value="">Choose…</option></select>
+    <button class="primary" type="submit">Go</button>
+  </form>
+  <div class="msg" id="gateMsg"></div>
+</div>
+
+<div id="app" class="hidden">
+  <div class="top">
+    <span class="who" id="whoName"></span>
+    <div class="nav">
+      <button class="icon" id="prevCard" aria-label="Previous card">‹</button>
+      <select id="jump" aria-label="Go to card"></select>
+      <button class="icon" id="nextCard" aria-label="Next card">›</button>
+    </div>
+    <span class="savestate" id="savestate"></span>
+    <button class="primary hidden" id="saveBtn">Retry save</button>
+    <div class="menu">
+      <button class="icon" id="menuBtn" aria-label="More">⋯</button>
+      <div class="menu-list hidden" id="menuList">
+        <button id="addBtn">+ Add a card</button>
+        <button id="nextCheckBtn">Next card that needs a look</button>
+        <button id="helpBtn">How this works</button>
+        <button id="switchBtn">Not <span id="whoName2"></span>? Switch person</button>
+      </div>
+    </div>
+  </div>
+  <main id="main"></main>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const API='https://script.google.com/macros/s/AKfycbxcoluQkschimgxNUIfsF72XKV9UK21kL6Bzg6Pxdgt938ivPdM_g5M61nTw2CbKcA_/exec';
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const thumb=(id,w)=>`https://drive.google.com/thumbnail?sz=w${w}-h${w}&id=${encodeURIComponent(id)}`;
+const front=n=>String(n).split(' // ')[0];
+const store={get(k){try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}},del(k){try{localStorage.removeItem(k)}catch(e){}}};
+function toast(t,ms=1800){const e=$('toast');e.textContent=t;e.classList.add('on');clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove('on'),ms)}
+function fail(t){const e=$('err');e.textContent=t;e.classList.remove('hidden')}
+const mobile=()=>matchMedia('(max-width:760px)').matches;
+
+let DATA=null, CODE='', WHO='', ITEMS=[], SAVED_AT='', DIRTY=false, CUR=0;
+let VER=0, SAVING=false, SAVE_ERR='', saveTimer=null, retryDelay=3000;
+
+async function api(body){
+  const r=await fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({...body,code:CODE})});
+  if(!r.ok)throw new Error('server error '+r.status);
+  return r.json();
+}
+
+/* ---------- printings + art ranking ---------- */
+// printing: [set, setName, cn, year, artist, imgNormal, imgPng, label]
+const ALIAS={LEB:['beta'],LEA:['alpha'],'2ED':['unlimited'],'3ED':['revised']};
+const norm=s=>String(s||'').normalize('NFKD').replace(/[̀-ͯ]/g,'').toLowerCase();
+const flat=s=>norm(s).replace(/[^a-z0-9]/g,'');
+const printsOf=card=>DATA.prints[card]||[];
+const printIdx=it=>printsOf(it.card).findIndex(p=>p[0]===it.set&&p[2]===it.number);
+const printingOf=it=>printsOf(it.card)[printIdx(it)]||null;
+const artOf=card=>DATA.art[front(card)]||[];
+function printLabel(p){return `${p[0]} #${p[2]} · ${p[1]} · ${p[3]}${p[7]?' · '+p[7]:''}`}
+function rankArt(card,p){
+  const groups=[[],[],[],[]]; // 0 matches printing, 1 same artist, 2 RustyShackleford, 3 other
+  const setc=p?p[0].toLowerCase():'', cn=p?p[2].toLowerCase().replace(/^0+/,''):'';
+  const last=p&&p[4]?flat(p[4].split(/\s+&\s+|\s+and\s+/)[0].split(' ').pop()):'';
+  for(const o of artOf(card)){
+    const name=String(o[1]); const head=name.split(/[\(\[\{]/)[0]; const rest=norm(name.slice(head.length));
+    const toks=(rest.match(/[a-z0-9]+/g)||[]).map(t=>t.replace(/^0+(?=\d)/,''));
+    const setm=p&&(toks.includes(setc)||(ALIAS[p[0]]||[]).some(a=>rest.includes(a)));
+    const cnm=p&&cn&&toks.includes(cn);
+    const artm=last&&last.length>2&&flat(rest).includes(last);
+    if(setm||(cnm&&!/\[[a-z0-9]+\]|[\(, ][a-z0-9]{3,4} \d/.test(rest)))groups[0].push([o,setm&&cnm?2:1]);
+    else if(artm)groups[1].push([o,0]);
+    else if(o[2]==='RustyShackleford')groups[2].push([o,0]);
+    else groups[3].push([o,0]);
+  }
+  groups[0].sort((a,b)=>b[1]-a[1]);
+  return groups.map(g=>g.map(x=>x[0]));
+}
+const bestArt=(card,p)=>rankArt(card,p)[0][0]||null;
+
+/* ---------- state ---------- */
+function status(it){
+  if(it.note==='picked')return it.art?['ok','✓ chosen']:['ok','✓ Jack finds art'];
+  if(!it.art)return['none','needs art'];
+  return['check',it.note==='jack'?'check (Jack picked)':'check (auto match)'];
+}
+const needsLook=it=>status(it)[0]!=='ok';
+const draftKey=()=>'mpcpicks:draft:'+WHO;
+function markDirty(){DIRTY=true;VER++;store.set(draftKey(),{base:SAVED_AT,items:ITEMS,cur:CUR});renderTop();scheduleSave(1200)}
+function bigSrc(it){
+  if(it.art==='SCRYFALL'||!it.art){const p=printingOf(it);return p?p[5]:''}
+  return thumb(it.art,1000);
+}
+function renderTop(){
+  $('whoName').textContent=WHO;$('whoName2').textContent=WHO;
+  const s=$('savestate');
+  if(SAVE_ERR){s.textContent='Not saved, retrying…';s.className='savestate dirty';s.title=SAVE_ERR}
+  else if(SAVING||DIRTY){s.textContent='Saving…';s.className='savestate';s.title=''}
+  else{s.textContent=SAVED_AT?'All changes saved':'Nothing changed yet';s.className='savestate';s.title=SAVED_AT?'Last saved '+new Date(SAVED_AT).toLocaleString():''}
+  $('saveBtn').classList.toggle('hidden',!SAVE_ERR);
+  const left=ITEMS.filter(needsLook).length;
+  $('jump').innerHTML=ITEMS.map((it,i)=>`<option value="${i}" ${i===CUR?'selected':''}>${i+1}/${ITEMS.length} ${needsLook(it)?'•':'✓'} ${esc(it.card)}</option>`).join('');
+  $('jump').title=left?`${left} cards still need a look`:'All cards chosen';
+  $('prevCard').disabled=CUR<=0;$('nextCard').disabled=CUR>=ITEMS.length-1;
+}
+
+/* ---------- the one-card view ---------- */
+function render(){
+  renderTop();
+  if(!ITEMS.length){$('main').innerHTML=`<div class="empty"><p>Your list is empty.</p><button class="primary" onclick="openAdd()">+ Add a card</button></div>`;return}
+  CUR=Math.max(0,Math.min(CUR,ITEMS.length-1));
+  const it=ITEMS[CUR], prints=printsOf(it.card), pi=printIdx(it), p=prints[pi]||null;
+  const groups=rankArt(it.card,p), opts=artOf(it.card), selOpt=opts.find(o=>o[0]===it.art);
+  const [cls,txt]=status(it), src=bigSrc(it);
+  const labels=['Matches this printing','Same artist','RustyShackleford (often exact, unlabelled)','Other art'];
+  let cap;
+  if(it.art==='SCRYFALL')cap='Scryfall image of this printing';
+  else if(selOpt)cap=`${selOpt[1]} · ${selOpt[2]} · ${selOpt[3]} DPI`;
+  else cap=opts.length?'No art chosen yet: pick one':'Jack will find MPCFill art for this, or pick Scryfall';
+  const tiles=[];
+  if(p)tiles.push(`<button class="opt ${it.art==='SCRYFALL'?'on':''}" data-a="SCRYFALL" title="Scryfall image (lower quality)"><img loading="lazy" src="${esc(p[5])}" alt="Scryfall"><span class="tag">SCRYFALL</span></button>`);
+  groups.forEach((g,gi)=>{if(!g.length)return;tiles.push(`<span class="divider">${labels[gi]} (${g.length})</span>`);
+    for(const o of g)tiles.push(`<button class="opt ${o[0]===it.art?'on':''}" data-a="${esc(o[0])}" title="${esc(o[1])} · ${esc(o[2])} · ${esc(o[3])} DPI"><img loading="lazy" src="${thumb(o[0],200)}" alt=""></button>`)});
+  $('main').innerHTML=`
+  <section class="stage" id="stage">
+    <div class="cardwrap">${src?`<img class="big" id="big" src="${esc(src)}" alt="${esc(it.card)}" draggable="false">`:`<div class="big ph" id="big">${esc(it.card)}</div>`}
+      <button class="navbtn l" id="cPrev" aria-label="Previous card" ${CUR<=0?'disabled':''}>‹</button>
+      <button class="navbtn r" id="cNext" aria-label="Next card" ${CUR>=ITEMS.length-1?'disabled':''}>›</button></div>
+    <div class="cap">Card ${CUR+1} of ${ITEMS.length}</div>
+    <div class="cap" title="${esc(cap)}">${esc(cap)}</div>
+  </section>
+  <section class="side">
+    <div class="head"><h2>${esc(it.card)}</h2><span class="st ${cls}">${txt}</span></div>
+    ${prints.length?`<div class="pbar">
+      <button class="icon" id="pPrev" aria-label="Older printing" ${pi<=0?'disabled':''}>‹</button>
+      <select id="psel" aria-label="Printing">${prints.map((x,j)=>`<option value="${j}" ${j===pi?'selected':''}>${esc(printLabel(x))}</option>`).join('')}</select>
+      <button class="icon" id="pNext" aria-label="Newer printing" ${pi>=prints.length-1?'disabled':''}>›</button>
+      <span class="pcount">${pi+1}/${prints.length}</span></div>`:'<div class="muted" style="font-size:13px">No printed version on Scryfall; MPCFill art only.</div>'}
+    ${it.art==='SCRYFALL'?'<div class="warnbox"><b>Warning: low quality!</b> Scryfall images are about 300 DPI with stretched edges. MPCFill art is usually sharper.</div>':''}
+    <div class="artlabel">Art · ${opts.length} MPCFill${p?' + Scryfall':''}</div>
+    <div class="opts" id="opts">${tiles.join('')||'<span class="muted">No images.</span>'}</div>
+    <div class="ctrls">
+      <label for="qty">Copies</label><input id="qty" type="number" inputmode="numeric" min="1" max="99" value="${+it.qty||1}">
+      <label for="fin">Finish</label><select id="fin"><option value="none" ${it.finish!=='holo'?'selected':''}>Normal</option><option value="holo" ${it.finish==='holo'?'selected':''}>Holo front</option></select>
+      <span class="grow"></span>
+      <span class="keys"><kbd>←</kbd><kbd>→</kbd> back / next · <kbd>Enter</kbd> looks good</span>
+    </div>
+    <div class="actions">
+      <button id="back" ${CUR<=0?'disabled':''}>‹ Back</button>
+      <button class="danger" id="remove">Remove</button><span class="grow"></span>
+      <button id="skip" ${CUR>=ITEMS.length-1?'disabled':''}>Next ›</button>
+      <button class="primary" id="ok">Looks good →</button>
+    </div>
+  </section>`;
+  wire(it,prints);
+  // warm up the neighbours' main image
+  for(const j of[CUR+1,CUR-1]){const n=ITEMS[j];if(n){const s=bigSrc(n);if(s)new Image().src=s}}
+}
+function setPrinting(it,x){
+  it.set=x[0];it.number=x[2];
+  if(it.art==='SCRYFALL')it.art_name=`Scryfall ${it.set} #${it.number}`;
+  else{const b=bestArt(it.card,x);if(b){it.art=b[0];it.art_name=b[1]}else if(!artOf(it.card).some(o=>o[0]===it.art)){it.art='';it.art_name=''}}
+  it.note='picked';markDirty();render();
+}
+function wire(it,prints){
+  $('opts').onclick=e=>{const b=e.target.closest('.opt');if(!b)return;const a=b.dataset.a;
+    it.art=a;it.art_name=a==='SCRYFALL'?`Scryfall ${it.set} #${it.number}`:(artOf(it.card).find(o=>o[0]===a)||[])[1]||'';
+    it.note='picked';markDirty();const sc=$('opts').scrollTop,sl=$('opts').scrollLeft;render();$('opts').scrollTop=sc;$('opts').scrollLeft=sl};
+  if($('psel')){
+    $('psel').onchange=e=>{e.target.blur();setPrinting(it,prints[+e.target.value])};
+    $('pPrev').onclick=()=>{const i=printIdx(it);if(i>0)setPrinting(it,prints[i-1])};
+    $('pNext').onclick=()=>{const i=printIdx(it);if(i<prints.length-1)setPrinting(it,prints[i+1])};
+  }
+  $('qty').onchange=e=>{it.qty=Math.max(1,Math.min(99,parseInt(e.target.value,10)||1));e.target.value=it.qty;markDirty()};
+  $('fin').onchange=e=>{it.finish=e.target.value;markDirty();if(it.finish==='holo')toast('Holo cards go in a separate small order')};
+  $('remove').onclick=()=>{if(!confirm(`Remove ${it.card} from your list?`))return;ITEMS.splice(CUR,1);markDirty();render();toast('Removed')};
+  $('ok').onclick=()=>{it.qty=Math.max(1,Math.min(99,parseInt($('qty').value,10)||1));it.note='picked';markDirty();
+    const n=nextNeeding(CUR);
+    if(n<0){render();toast('All cards chosen! Your picks are saved automatically.',3000)}else go(n,1)};
+  $('cPrev').onclick=$('back').onclick=()=>go(CUR-1,-1);
+  $('cNext').onclick=$('skip').onclick=()=>go(CUR+1,1);
+  swipe($('stage'));
+}
+function nextNeeding(from){for(let k=1;k<=ITEMS.length;k++){const j=(from+k)%ITEMS.length;if(needsLook(ITEMS[j]))return j}return -1}
+function go(i,dir){
+  if(i<0||i>=ITEMS.length||i===CUR)return;
+  const big=$('big');
+  if(big&&dir){big.style.transform=`translateX(${dir>0?-40:40}px)`;big.style.opacity='0'}
+  setTimeout(()=>{CUR=i;if(DIRTY)store.set(draftKey(),{base:SAVED_AT,items:ITEMS,cur:CUR});render();
+    const nb=$('big');if(nb&&dir){nb.style.transition='none';nb.style.transform=`translateX(${dir>0?40:-40}px)`;nb.style.opacity='0';
+      requestAnimationFrame(()=>{nb.style.transition='';nb.style.transform='';nb.style.opacity=''})}},dir?140:0);
+}
+function swipe(el){
+  let x0=null,y0=0,dx=0,lock=null;
+  el.ontouchstart=e=>{if(e.touches.length!==1)return;x0=e.touches[0].clientX;y0=e.touches[0].clientY;dx=0;lock=null};
+  el.ontouchmove=e=>{if(x0===null)return;dx=e.touches[0].clientX-x0;const dy=e.touches[0].clientY-y0;
+    if(lock===null&&(Math.abs(dx)>8||Math.abs(dy)>8))lock=Math.abs(dx)>Math.abs(dy)?'x':'y';
+    if(lock==='x'){e.preventDefault();const b=$('big');if(b){b.style.transition='none';b.style.transform=`translateX(${dx}px) rotate(${dx/40}deg)`}}};
+  el.ontouchend=()=>{if(x0===null)return;const b=$('big');if(b){b.style.transition='';b.style.transform=''}
+    if(lock==='x'&&Math.abs(dx)>60){if(dx<0&&CUR<ITEMS.length-1)go(CUR+1,1);else if(dx>0&&CUR>0)go(CUR-1,-1)}
+    x0=null};
+}
+$('prevCard').onclick=()=>go(CUR-1,-1);
+$('nextCard').onclick=()=>go(CUR+1,1);
+$('jump').onchange=e=>{e.target.blur();go(+e.target.value,0)};
+document.addEventListener('keydown',e=>{
+  if($('app').classList.contains('hidden')||$('addOverlay'))return;
+  if(/INPUT|SELECT|TEXTAREA/.test(e.target.tagName)||e.metaKey||e.ctrlKey||e.altKey)return;
+  if(e.key==='ArrowRight'){go(CUR+1,1);e.preventDefault()}
+  else if(e.key==='ArrowLeft'){go(CUR-1,-1);e.preventDefault()}
+  else if(e.key==='Enter'&&$('ok')){$('ok').click();e.preventDefault()}
+});
+
+/* ---------- menu ---------- */
+$('menuBtn').onclick=e=>{e.stopPropagation();$('menuList').classList.toggle('hidden')};
+document.addEventListener('click',()=>$('menuList').classList.add('hidden'));
+$('nextCheckBtn').onclick=()=>{const n=nextNeeding(CUR);if(n<0)toast('Every card is chosen');else go(n,1)};
+$('helpBtn').onclick=()=>toast('Pick the printing with ‹ ›, tap the art you want, then press Looks good. Swipe the card (or use ‹ › or ← →) to move between cards. Everything saves automatically.',7000);
+
+/* ---------- add a card ---------- */
+let acTimer=null, acList=[], acOn=-1;
+function openAdd(){
+  const o=document.createElement('div');o.className='overlay';o.id='addOverlay';
+  o.innerHTML=`<div class="dialog" role="dialog" aria-label="Add a card"><h3>Add a card</h3>
+    <input id="aname" style="width:100%" placeholder="Card name, e.g. Lightning Bolt" autocomplete="off" autocapitalize="off">
+    <ul class="sugg hidden" id="sugg"></ul><p class="msg" id="amsg"></p>
+    <div style="text-align:right"><button id="aclose">Cancel</button></div></div>`;
+  document.body.appendChild(o);$('aname').focus();
+  const close=()=>o.remove();
+  o.onclick=e=>{if(e.target===o)close()};$('aclose').onclick=close;
+  $('aname').oninput=()=>{clearTimeout(acTimer);const q=$('aname').value.trim();if(q.length<2){$('sugg').classList.add('hidden');return}
+    acTimer=setTimeout(async()=>{try{const r=await fetch('https://api.scryfall.com/cards/autocomplete?q='+encodeURIComponent(q));const j=await r.json();acList=(j.data||[]).slice(0,12);acOn=-1;drawSugg()}catch(e){}},300)};
+  $('aname').onkeydown=e=>{if(e.key==='Escape')close();else if(e.key==='ArrowDown'){acOn=Math.min(acList.length-1,acOn+1);drawSugg();e.preventDefault()}else if(e.key==='ArrowUp'){acOn=Math.max(0,acOn-1);drawSugg();e.preventDefault()}else if(e.key==='Enter'){e.preventDefault();pickName(acList[acOn<0?0:acOn])}};
+  $('sugg').onclick=e=>{const li=e.target.closest('li');if(li)pickName(acList[+li.dataset.i])};
+}
+function drawSugg(){const u=$('sugg');u.innerHTML=acList.map((n,i)=>`<li data-i="${i}" class="${i===acOn?'on':''}">${esc(n)}</li>`).join('');u.classList.toggle('hidden',!acList.length)}
+async function pickName(name){
+  if(!name)return;
+  $('sugg').classList.add('hidden');$('amsg').textContent='Looking up printings…';
+  try{
+    if(!DATA.prints[name]){
+      let url='https://api.scryfall.com/cards/search?'+new URLSearchParams({q:`!"${name}" game:paper`,unique:'prints',order:'released',dir:'asc'}),out=[];
+      while(url){const r=await fetch(url);if(!r.ok)break;const j=await r.json();
+        for(const c of j.data||[]){const iu=c.image_uris||(c.card_faces||[{}])[0].image_uris||{};const fx=c.frame_effects||[];
+          const lab=[c.border_color==='borderless'&&'borderless',fx.includes('extendedart')&&'extended art',fx.includes('showcase')&&'showcase',c.full_art&&'full art',c.promo&&'promo',c.lang!=='en'&&c.lang].filter(Boolean).join(', ');
+          if(iu.normal)out.push([c.set.toUpperCase(),c.set_name,c.collector_number,(c.released_at||'').slice(0,4),c.artist||((c.card_faces||[{}])[0].artist)||'',iu.normal,iu.png||'',lab])}
+        url=j.has_more?j.next_page:null;if(url)await new Promise(r=>setTimeout(r,150))}
+      DATA.prints[name]=out;
+    }
+    const pr=DATA.prints[name];
+    if(!pr.length){$('amsg').textContent='Scryfall has no paper printing of that card.';return}
+    const p=pr.find(x=>x[0]!=='LEA'&&!x[7])||pr[0], b=bestArt(name,p);
+    ITEMS.push({card:name,set:p[0],number:p[2],qty:1,finish:'none',art:b?b[0]:'',art_name:b?b[1]:'',note:''});
+    $('addOverlay').remove();CUR=ITEMS.length-1;markDirty();render();toast('Added. Pick the printing and art.');
+  }catch(e){$('amsg').textContent='Could not reach Scryfall. Try again in a moment.'}
+}
+$('addBtn').onclick=openAdd;
+
+/* ---------- save / load ---------- */
+// Saves happen automatically a moment after each change, one at a time.
+// Each save sends this person's whole list, so a later save always contains the earlier changes.
+const payload=()=>({action:'save',person:WHO,code:CODE,items:ITEMS.map(it=>({card:it.card,set:it.set,number:it.number,qty:it.qty,finish:it.finish,art:it.art,art_name:it.art_name,note:it.note}))});
+function scheduleSave(ms){clearTimeout(saveTimer);saveTimer=setTimeout(saveNow,ms)}
+async function saveNow(){
+  clearTimeout(saveTimer);
+  if(SAVING||!DIRTY)return;
+  SAVING=true;renderTop();
+  const ver=VER;
+  try{
+    const r=await api(payload());
+    if(!r.ok)throw new Error(r.error);
+    SAVED_AT=r.saved_at;SAVE_ERR='';retryDelay=3000;$('err').classList.add('hidden');
+    if(ver===VER){DIRTY=false;store.del(draftKey())}
+    else store.set(draftKey(),{base:SAVED_AT,items:ITEMS,cur:CUR});
+  }catch(e){
+    SAVE_ERR=e.message||'network error';
+    scheduleSave(retryDelay);retryDelay=Math.min(retryDelay*2,30000);
+  }
+  SAVING=false;renderTop();
+  if(DIRTY&&!SAVE_ERR)scheduleSave(300);
+}
+$('saveBtn').onclick=()=>{retryDelay=3000;saveNow()};
+// leaving or switching away from the tab: send what's pending right away
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='hidden'&&DIRTY&&!SAVING){
+    try{fetch(API,{method:'POST',keepalive:true,headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(payload())})}catch(e){}
+  }});
+$('switchBtn').onclick=()=>{if(DIRTY&&!confirm('You have unsaved changes. Leave anyway?'))return;store.del('mpcpicks:who');location.reload()};
+window.addEventListener('beforeunload',e=>{if(DIRTY||SAVING){e.preventDefault();e.returnValue=''}});
+
+async function enter(){
+  const r=await api({action:'load'});
+  if(!r.ok)throw new Error(r.error);
+  const mine=r.rows.filter(x=>x.person===WHO);
+  SAVED_AT=mine.reduce((a,x)=>String(x.saved_at)>a?String(x.saved_at):a,'');
+  ITEMS=mine.length?mine.map(x=>({card:String(x.card),set:String(x.set||''),number:String(x.number||''),qty:+x.qty||1,finish:x.finish==='holo'?'holo':'none',art:String(x.art||''),art_name:String(x.art_name||''),note:String(x.note||'')}))
+              :JSON.parse(JSON.stringify(DATA.defaults[WHO]||[]));
+  CUR=0;
+  const dr=store.get(draftKey());
+  if(dr&&dr.base===SAVED_AT&&Array.isArray(dr.items)){ITEMS=dr.items;DIRTY=true;VER++;CUR=+dr.cur||0;scheduleSave(500)}
+  else{const n=ITEMS.findIndex(needsLook);CUR=n<0?0:n}
+  $('gate').classList.add('hidden');$('app').classList.remove('hidden');
+  render();
+  if(!store.get('mpcpicks:seenhelp')){store.set('mpcpicks:seenhelp',1);$('helpBtn').click()}
+}
+$('gateForm').onsubmit=async e=>{
+  e.preventDefault();
+  CODE=$('code').value.trim();WHO=$('who').value;$('gateMsg').textContent='';
+  if(!WHO){$('gateMsg').textContent='Choose your name.';return}
+  try{await enter();store.set('mpcpicks:code',CODE);store.set('mpcpicks:who',WHO)}
+  catch(err){$('gateMsg').textContent=err.message==='wrong code'?'That join code is not right.':'Could not connect ('+err.message+').'}
+};
+
+(async()=>{
+  try{DATA=await fetch('data.json').then(r=>r.json())}catch(e){fail('Could not load the card list.');return}
+  $('who').innerHTML+=DATA.people.map(p=>`<option>${esc(p)}</option>`).join('');
+  const c=store.get('mpcpicks:code'), w=store.get('mpcpicks:who');
+  if(c)$('code').value=c;
+  if(c&&w&&DATA.people.includes(w)){CODE=c;WHO=w;$('who').value=w;try{await enter();return}catch(e){}}
+  $('gate').classList.remove('hidden');
+})();
+</script>
+</body>
+</html>

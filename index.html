@@ -413,12 +413,23 @@ document.addEventListener('visibilitychange',()=>{
 $('switchBtn').onclick=()=>{if(DIRTY&&!confirm('You have unsaved changes. Leave anyway?'))return;store.del('mpcpicks:who');location.reload()};
 window.addEventListener('beforeunload',e=>{if(DIRTY||SAVING){e.preventDefault();e.returnValue=''}});
 
+// Rows saved before the Sheet had a finish column have no finish; those take it from the starting list
+// (the n-th saved copy of a printing gets the n-th starting copy's finish).
+function fromRow(x,i,all){
+  const card=String(x.card),set=String(x.set||''),number=String(x.number||'');
+  let finish=x.finish;
+  if(finish!=='holo'&&finish!=='none'){
+    const same=r=>String(r.card)===card&&String(r.set||'')===set&&String(r.number||'')===number;
+    const n=all.slice(0,i).filter(same).length,d=(DATA.defaults[WHO]||[]).filter(same)[n];
+    finish=d&&d.finish==='holo'?'holo':'none'}
+  return{card,set,number,qty:+x.qty||1,finish,art:String(x.art||''),art_name:String(x.art_name||''),note:String(x.note||'')};
+}
 async function enter(){
   const r=await api({action:'load'});
   if(!r.ok)throw new Error(r.error);
   const mine=r.rows.filter(x=>x.person===WHO);
   SAVED_AT=mine.reduce((a,x)=>String(x.saved_at)>a?String(x.saved_at):a,'');
-  ITEMS=mine.length?mine.map(x=>({card:String(x.card),set:String(x.set||''),number:String(x.number||''),qty:+x.qty||1,finish:x.finish==='holo'?'holo':'none',art:String(x.art||''),art_name:String(x.art_name||''),note:String(x.note||'')}))
+  ITEMS=mine.length?mine.map(fromRow)
               :JSON.parse(JSON.stringify(DATA.defaults[WHO]||[]));
   CUR=0;
   const dr=store.get(draftKey());
